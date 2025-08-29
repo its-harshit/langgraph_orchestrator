@@ -3,6 +3,9 @@
 import { Bot } from "lucide-react";
 import type { Agent, AgentEvent, GuardrailCheck } from "@/lib/types";
 import { AgentsList } from "./agents-list";
+import { LangGraphAgentsPanel } from "./langgraph-agents-panel";
+import { LangGraphEventTimeline } from "./langgraph-event-timeline";
+import { LangGraphContextPanel } from "./langgraph-context-panel";
 import { Guardrails } from "./guardrails";
 import { ConversationContext } from "./conversation-context";
 import { RunnerOutput } from "./runner-output";
@@ -19,6 +22,7 @@ interface AgentPanelProps {
     flight_number?: string;
     account_number?: string;
   };
+  routingHistory?: string[];  // Optional: use LangGraph panel if provided
 }
 
 export function AgentPanel({
@@ -27,6 +31,7 @@ export function AgentPanel({
   events,
   guardrails,
   context,
+  routingHistory,
 }: AgentPanelProps) {
   const activeAgent = agents.find((a) => a.name === currentAgent);
   const runnerEvents = events.filter((e) => e.type !== "message");
@@ -42,13 +47,41 @@ export function AgentPanel({
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
-        <AgentsList agents={agents} currentAgent={currentAgent} />
+        {/* Use LangGraph agents panel if routing history is provided (even if empty), otherwise fall back to legacy */}
+        {routingHistory !== undefined ? (
+          <LangGraphAgentsPanel 
+            agents={agents}
+            currentAgent={currentAgent}
+            routingHistory={routingHistory}
+          />
+        ) : (
+          <AgentsList agents={agents} currentAgent={currentAgent} />
+        )}
         <Guardrails
           guardrails={guardrails}
           inputGuardrails={activeAgent?.input_guardrails ?? []}
         />
-        <ConversationContext context={context} />
-        <RunnerOutput runnerEvents={runnerEvents} />
+        
+        {/* Use enhanced context panel for LangGraph, otherwise use legacy */}
+        {routingHistory !== undefined ? (
+          <LangGraphContextPanel 
+            context={context}
+            currentAgent={currentAgent}
+            routingHistory={routingHistory}
+          />
+        ) : (
+          <ConversationContext context={context} />
+        )}
+        
+        {/* Use enhanced event timeline for LangGraph, otherwise use legacy */}
+        {routingHistory !== undefined ? (
+          <LangGraphEventTimeline 
+            runnerEvents={runnerEvents}
+            routingHistory={routingHistory}
+          />
+        ) : (
+          <RunnerOutput runnerEvents={runnerEvents} />
+        )}
       </div>
     </div>
   );

@@ -14,6 +14,7 @@ export default function Home() {
   const [guardrails, setGuardrails] = useState<GuardrailCheck[]>([]);
   const [context, setContext] = useState<Record<string, any>>({});
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [routingHistory, setRoutingHistory] = useState<string[]>([]);  // Add routing history
   // Loading state while awaiting assistant response
   const [isLoading, setIsLoading] = useState(false);
 
@@ -24,6 +25,7 @@ export default function Home() {
       setConversationId(data.conversation_id);
       setCurrentAgent(data.current_agent);
       setContext(data.context);
+      if (data.routing_history) setRoutingHistory(data.routing_history);  // Set initial routing history
       const initialEvents = (data.events || []).map((e: any) => ({
         ...e,
         timestamp: e.timestamp ?? Date.now(),
@@ -62,6 +64,7 @@ export default function Home() {
     if (!conversationId) setConversationId(data.conversation_id);
     setCurrentAgent(data.current_agent);
     setContext(data.context);
+    if (data.routing_history) setRoutingHistory(data.routing_history);  // Capture routing history
     if (data.events) {
       const stamped = data.events.map((e: any) => ({
         ...e,
@@ -74,6 +77,7 @@ export default function Home() {
     if (data.guardrails) setGuardrails(data.guardrails);
 
     if (data.messages) {
+      // API now only returns assistant messages (following original pattern)
       const responses: Message[] = data.messages.map((m: any) => ({
         id: Date.now().toString() + Math.random().toString(),
         content: m.content,
@@ -95,6 +99,7 @@ export default function Home() {
         events={events}
         guardrails={guardrails}
         context={context}
+        routingHistory={routingHistory}
       />
       <Chat
         messages={messages}
