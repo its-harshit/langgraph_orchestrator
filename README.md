@@ -54,14 +54,19 @@ Triage Agent (Entry Point)
 - Node.js 18+
 - OpenAI API key
 
-### **1. Set Your OpenAI API Key**
+### **1. Set Your API Keys**
 
 ```bash
-# Set environment variable
-export OPENAI_API_KEY=your_api_key
+# Create .env file in python-backend/
+cd python-backend
 
-# Or create .env file in python-backend/
-echo "OPENAI_API_KEY=your_api_key" > python-backend/.env
+# For OpenAI (specialist agents)
+echo "OPENAI_API_KEY=your_openai_api_key" > .env
+
+# For custom LLM (triage agent) - Optional
+echo "USE_CUSTOM_LLM=true" >> .env
+echo "CUSTOM_LLM_BASE_URL=http://your-server:port/v1" >> .env
+echo "CUSTOM_LLM_API_KEY=dummy-key" >> .env
 ```
 
 ### **2. Install Dependencies**
@@ -193,6 +198,13 @@ openai-cs-agents-demo/
 
 ## 🧪 **Testing**
 
+### **Custom LLM Testing**
+```bash
+# Test custom LLM integration
+cd python-backend
+python test_custom_llm.py
+```
+
 ### **Individual Agent Tests**
 ```bash
 cd python-backend
@@ -213,6 +225,7 @@ curl -X POST http://localhost:8000/chat \
 - **`PURE_LANGGRAPH_SUCCESS_SUMMARY.md`**: Technical achievements
 - **`FUNCTIONALITY_MAPPING.md`**: Feature parity documentation
 - **`PROJECT_STRUCTURE.md`**: Detailed project organization
+- **`CUSTOM_LLM_SETUP.md`**: Guide for using custom LLMs
 
 ## 🤝 **Contributing**
 

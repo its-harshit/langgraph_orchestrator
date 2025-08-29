@@ -1,6 +1,5 @@
 """
 Pure LangGraph Implementation of Customer Service Agents Demo
-Complete replacement of OpenAI SDK with native LangGraph
 """
 
 from __future__ import annotations as _annotations
@@ -111,9 +110,22 @@ def baggage_lookup_pure(query: str) -> str:
 # LLM CONFIGURATION
 # =========================
 
-def get_llm(model: str = "gpt-4") -> BaseChatModel:
-    """Get configured LLM for agents."""
-    return ChatOpenAI(model=model, temperature=0)
+import os
+
+def get_llm(model: str = "gpt-4", agent_type: str = "default") -> BaseChatModel:
+    """Get configured LLM for agents with support for custom endpoints."""
+    
+    # All agents use custom LLM
+    print(f"🤖 Using custom LLM for {agent_type}: http://183.82.7.228:9519")
+    
+    # Create custom LLM with explicit configuration
+    return ChatOpenAI(
+        model="NPCI_Greviance",
+        temperature=0,
+        base_url="http://183.82.7.228:9519/v1",
+        api_key="dummy-key",
+        max_tokens=1000
+    )
 
 # =========================
 # PURE LANGGRAPH AGENTS
@@ -123,23 +135,50 @@ async def triage_agent_node(state: AirlineState) -> AirlineState:
     """Pure LangGraph triage agent - routes customers to specialists"""
     print("🎯 PURE TRIAGE: Processing with native LangGraph")
     
-    llm = get_llm("gpt-4")
+    # Use custom LLM for triage if configured
+    llm = get_llm("gpt-4", "triage")
     
-    system_prompt = """You are a helpful airline customer service triage agent.
-    
-    Analyze the customer's request and determine the appropriate department by including one of these EXACT routing codes in your response:
-    - ROUTE_TO_SEAT_BOOKING: For seat changes, seat selection, seat upgrades
-    - ROUTE_TO_FLIGHT_STATUS: For flight status, gate information, delays
-    - ROUTE_TO_CANCELLATION: For flight cancellations, refunds
-    - ROUTE_TO_FAQ: For general questions about policies, baggage, amenities
-    
-    Always provide a helpful response to the customer AND include the appropriate routing code.
-    
-    Customer context:
-    - Account: {account_number}
-    - Confirmation: {confirmation_number}
-    - Flight: {flight_number}
-    """.format(
+    system_prompt = """You are an airline customer service triage agent. Your job is to analyze customer requests and route them to the appropriate specialist.
+
+SPECIAL CASE - "WHAT CAN YOU DO?" QUESTIONS:
+When someone asks "what can you do?", "how can you help me?", "what services do you offer?", or similar questions, respond directly with:
+"Welcome to our airline customer service! I can help you with:
+
+• Seat Management: Change seats, view seat maps, upgrade seats
+• Flight Information: Check flight status, delays, gates, departure times
+• Booking Changes: Cancel flights, request refunds, modify bookings
+• General Inquiries: Baggage policies, wifi, amenities, airline policies
+
+What would you like help with today?"
+
+For these questions, do NOT include any routing code - just end your response.
+
+ROUTING RULES (for specific requests):
+1. SEAT_BOOKING: Any request about seats, seat changes, seat selection, seat upgrades, seat maps, seat preferences
+2. FLIGHT_STATUS: Any request about flight status, delays, gates, departure times, arrival times, flight tracking
+3. CANCELLATION: Any request about cancelling flights, refunds, cancellations, booking cancellations
+4. FAQ: Any general questions about policies, baggage, amenities, wifi, food, entertainment, or other airline services
+
+EXAMPLES:
+- "Can I change my seat?" → ROUTE_TO_SEAT_BOOKING
+- "What's my flight status?" → ROUTE_TO_FLIGHT_STATUS  
+- "I want to cancel my flight" → ROUTE_TO_CANCELLATION
+- "Do you have wifi?" → ROUTE_TO_FAQ
+- "What's the baggage policy?" → ROUTE_TO_FAQ
+- "Show me available seats" → ROUTE_TO_SEAT_BOOKING
+- "Is my flight delayed?" → ROUTE_TO_FLIGHT_STATUS
+- "I need a refund" → ROUTE_TO_CANCELLATION
+
+RESPONSE FORMAT:
+1. Give a brief, helpful response to the customer
+2. Include the routing code at the end of your response (except for "what can you do?" questions)
+3. Keep your response concise and professional
+
+Customer Information:
+- Account: {account_number}
+- Confirmation: {confirmation_number} 
+- Flight: {flight_number}
+""".format(
         account_number=state["context"].account_number or "Not provided",
         confirmation_number=state["context"].confirmation_number or "Not provided", 
         flight_number=state["context"].flight_number or "Not provided"
@@ -160,6 +199,10 @@ async def triage_agent_node(state: AirlineState) -> AirlineState:
         next_agent = "cancellation"
     elif "ROUTE_TO_FAQ" in response.content:
         next_agent = "faq"
+    else:
+        # No routing code found - triage agent handles the response directly
+        next_agent = "end"
+        print(f"🎯 Triage handling response directly (no routing code found)")
     
     print(f"🎯 Triage decision: {next_agent}")
     
